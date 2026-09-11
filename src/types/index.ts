@@ -1,0 +1,26 @@
+export type Papel = 'Tutor' | 'Doutor';
+
+export interface LoginResponse {
+  token: string;
+  papel: Papel;
+  id: number;
+  nome: string;
+}
+
+export interface Pet {
+  idPet: number;
+  idTutor: number;
+  nome: string;
+  especie: string;
+  raca?: string;
+  dataNascimento?: string;
+  pesoKg?: number;
+}
+
+export interface NovoPet {
+  idTutor: number;
+  nome: string;
+  especie: string;
+  raca?: string;
+  pesoKg?: number;
+}
