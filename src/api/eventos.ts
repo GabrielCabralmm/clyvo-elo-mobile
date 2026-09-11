@@ -12,7 +12,9 @@ export async function criarEvento(evento: NovoEventoClinico) {
 }
 
 export async function atualizarStatusEvento(id: number, novoStatus: string) {
-  await api.put(`/api/EventosClinicos/${id}/status`, novoStatus);
+  await api.put(`/api/EventosClinicos/${id}/status`, JSON.stringify(novoStatus), {
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
 
 export async function excluirEvento(id: number) {

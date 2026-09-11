@@ -7,6 +7,13 @@ export interface LoginResponse {
   nome: string;
 }
 
+export interface CadastroTutorRequest {
+  nome: string;
+  email: string;
+  senha: string;
+  telefone?: string;
+}
+
 export interface Pet {
   idPet: number;
   idTutor: number;

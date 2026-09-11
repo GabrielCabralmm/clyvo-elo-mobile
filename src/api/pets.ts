@@ -1,5 +1,5 @@
 import { api } from './client';
-import { Pet, NovoPet } from '@/types';
+import { Pet, NovoPet } from '../types';
 
 export async function listarPets() {
   const { data } = await api.get<Pet[]>('/api/Pets');
@@ -17,7 +17,9 @@ export async function criarPet(pet: NovoPet) {
 }
 
 export async function atualizarPeso(id: number, pesoKg: number) {
-  await api.put(`/api/Pets/${id}/peso`, pesoKg);
+  await api.put(`/api/Pets/${id}/peso`, JSON.stringify(pesoKg), {
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
 
 export async function excluirPet(id: number) {

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { storage } from '@/lib/storage';
-import { loginTutor, loginDoutor } from '@/api/auth';
-import { Papel } from '@/types';
+import { loginTutor, loginDoutor, cadastrarTutor } from '@/api/auth';
+import { Papel, CadastroTutorRequest } from '@/types';
 
 interface AuthState {
   token: string | null;
@@ -11,6 +11,7 @@ interface AuthState {
   carregando: boolean;
   entrarComoTutor: (email: string, senha: string) => Promise<void>;
   entrarComoDoutor: (email: string, senha: string) => Promise<void>;
+  cadastrarComoTutor: (dados: CadastroTutorRequest) => Promise<void>;
   sair: () => Promise<void>;
 }
 
@@ -61,6 +62,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await salvarSessao(resultado);
   }
 
+  async function cadastrarComoTutor(dados: CadastroTutorRequest) {
+    const resultado = await cadastrarTutor(dados);
+    await salvarSessao(resultado);
+  }
+
   async function sair() {
     await storage.deleteItem('token');
     await storage.deleteItem('papel');
@@ -73,7 +79,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ token, papel, nome, id, carregando, entrarComoTutor, entrarComoDoutor, sair }}>
+    <AuthContext.Provider
+      value={{ token, papel, nome, id, carregando, entrarComoTutor, entrarComoDoutor, cadastrarComoTutor, sair }}
+    >
       {children}
     </AuthContext.Provider>
   );
