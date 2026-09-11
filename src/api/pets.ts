@@ -6,6 +6,11 @@ export async function listarPets() {
   return data;
 }
 
+export async function listarMeusPets() {
+  const { data } = await api.get<Pet[]>('/api/Pets/meus');
+  return data;
+}
+
 export async function buscarPet(id: number) {
   const { data } = await api.get<Pet>(`/api/Pets/${id}`);
   return data;

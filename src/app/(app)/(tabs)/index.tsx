@@ -2,7 +2,7 @@ import { View, Text, FlatList, Pressable, ActivityIndicator, StyleSheet } from '
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Bell, PawPrint, ChevronRight, Plus } from 'lucide-react-native';
-import { listarPets } from '@/api/pets';
+import { listarMeusPets } from '@/api/pets';
 import { useAuth } from '@/contexts/AuthContext';
 import { colors } from '@/theme/colors';
 import { Pet } from '@/types';
@@ -11,7 +11,7 @@ export default function Home() {
   const { nome } = useAuth();
   const { data: pets, isLoading, isError } = useQuery({
     queryKey: ['pets'],
-    queryFn: listarPets,
+    queryFn: listarMeusPets,
   });
 
   return (
