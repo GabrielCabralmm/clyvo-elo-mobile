@@ -2,16 +2,18 @@ import { View, Text, FlatList, Pressable, ActivityIndicator, StyleSheet } from '
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Bell, PawPrint, ChevronRight, Plus } from 'lucide-react-native';
-import { listarMeusPets } from '@/api/pets';
+import { listarPets, listarMeusPets } from '@/api/pets';
 import { useAuth } from '@/contexts/AuthContext';
 import { colors } from '@/theme/colors';
 import { Pet } from '@/types';
 
 export default function Home() {
-  const { nome } = useAuth();
+  const { nome, papel } = useAuth();
+  const ehDoutor = papel === 'Doutor';
+
   const { data: pets, isLoading, isError } = useQuery({
-    queryKey: ['pets'],
-    queryFn: listarMeusPets,
+    queryKey: ['pets', papel],
+    queryFn: ehDoutor ? listarPets : listarMeusPets,
   });
 
   return (
@@ -26,7 +28,7 @@ export default function Home() {
         </View>
       </View>
 
-      <Text style={styles.secaoTitulo}>Meus pets</Text>
+      <Text style={styles.secaoTitulo}>{ehDoutor ? 'Pacientes' : 'Meus pets'}</Text>
 
       {isLoading && <ActivityIndicator color={colors.green} style={{ marginTop: 20 }} />}
       {isError && <Text style={styles.erro}>Não deu pra carregar os pets agora.</Text>}
@@ -55,9 +57,11 @@ export default function Home() {
         )}
       />
 
-      <Pressable style={styles.botaoNovo} onPress={() => router.push('/pet/novo')}>
-        <Plus color={colors.white} size={20} />
-      </Pressable>
+      {!ehDoutor && (
+        <Pressable style={styles.botaoNovo} onPress={() => router.push('/pet/novo')}>
+          <Plus color={colors.white} size={20} />
+        </Pressable>
+      )}
     </View>
   );
 }
