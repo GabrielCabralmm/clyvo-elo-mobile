@@ -1,7 +1,5 @@
-import { Redirect, Tabs } from 'expo-router';
-import { House, User } from 'lucide-react-native';
+import { Redirect, Stack } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { colors } from '@/theme/colors';
 
 export default function AppLayout() {
   const { token, carregando } = useAuth();
@@ -15,28 +13,12 @@ export default function AppLayout() {
   }
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.green,
-        tabBarInactiveTintColor: colors.textSecondary,
-        tabBarStyle: { backgroundColor: colors.white, borderTopColor: colors.cardBg },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Início',
-          tabBarIcon: ({ color, size }) => <House color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="perfil"
-        options={{
-          title: 'Perfil',
-          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
-        }}
-      />
-    </Tabs>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="pet/[id]" options={{ presentation: 'card' }} />
+      <Stack.Screen name="pet/novo" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="eventos/[idPet]" options={{ presentation: 'card' }} />
+      <Stack.Screen name="eventos/novo" options={{ presentation: 'modal' }} />
+    </Stack>
   );
 }

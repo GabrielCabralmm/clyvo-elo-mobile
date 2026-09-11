@@ -24,3 +24,22 @@ export interface NovoPet {
   raca?: string;
   pesoKg?: number;
 }
+
+export interface EventoClinico {
+  idEvento: number;
+  idPet: number;
+  idDoutor: number;
+  tipoEvento: string;
+  descricao?: string;
+  dataEvento: string;
+  status: string;
+}
+
+export interface NovoEventoClinico {
+  idPet: number;
+  idDoutor: number;
+  tipoEvento: string;
+  descricao?: string;
+  dataEvento: string;
+  status: string;
+}
