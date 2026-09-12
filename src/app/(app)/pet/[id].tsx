@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator, TextInput, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { PawPrint, Trash2, Calendar, ChevronLeft, Check } from 'lucide-react-native';
+import { PawPrint, Cat, Trash2, Calendar, ChevronLeft, Check, Scale, Tag } from 'lucide-react-native';
 import { buscarPet, atualizarPeso, excluirPet } from '@/api/pets';
 import { colors } from '@/theme/colors';
 
@@ -61,64 +61,81 @@ export default function DetalhePet() {
     );
   }
 
+  const IconePet = pet.especie?.toUpperCase() === 'GATO' ? Cat : PawPrint;
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: 20 }}>
-      <Pressable onPress={() => router.back()} style={styles.voltar}>
+    <ScrollView style={styles.container} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+      <Pressable onPress={() => router.back()} style={styles.voltar} hitSlop={8}>
         <ChevronLeft color={colors.text} size={22} />
       </Pressable>
 
-      <View style={styles.avatarGrande}>
-        <PawPrint color={colors.green} size={36} />
-      </View>
-
-      <Text style={styles.nome}>{pet.nome}</Text>
-      <Text style={styles.especie}>{pet.raca ?? pet.especie}</Text>
-
-      <View style={styles.cartao}>
-        <Text style={styles.linhaLabel}>Espécie</Text>
-        <Text style={styles.linhaValor}>{pet.especie}</Text>
+      <View style={styles.topo}>
+        <View style={styles.avatarGrande}>
+          <IconePet color={colors.green} size={38} />
+        </View>
+        <Text style={styles.nome}>{pet.nome}</Text>
+        <Text style={styles.especie}>{pet.raca ?? pet.especie}</Text>
       </View>
 
       <View style={styles.cartao}>
-        <Text style={styles.linhaLabel}>Peso</Text>
-        {editandoPeso ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <TextInput
-              style={styles.inputPeso}
-              keyboardType="decimal-pad"
-              value={novoPeso}
-              onChangeText={setNovoPeso}
-              placeholder="kg"
-              autoFocus
-            />
+        <View style={styles.linhaIcone}>
+          <Tag color={colors.lightGreen} size={16} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.linhaLabel}>Espécie</Text>
+          <Text style={styles.linhaValor}>{pet.especie}</Text>
+        </View>
+      </View>
+
+      <View style={styles.cartao}>
+        <View style={styles.linhaIcone}>
+          <Scale color={colors.lightGreen} size={16} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.linhaLabel}>Peso</Text>
+          {editandoPeso ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 }}>
+              <TextInput
+                style={styles.inputPeso}
+                keyboardType="decimal-pad"
+                value={novoPeso}
+                onChangeText={setNovoPeso}
+                placeholder="kg"
+                autoFocus
+              />
+              <Pressable
+                onPress={() => {
+                  const valor = Number(novoPeso.replace(',', '.'));
+                  if (!valor || valor <= 0) {
+                    setErro('Digita um peso válido.');
+                    return;
+                  }
+                  mutacaoPeso.mutate(valor);
+                }}
+                hitSlop={8}
+              >
+                <Check color={colors.green} size={20} />
+              </Pressable>
+            </View>
+          ) : (
             <Pressable
               onPress={() => {
-                const valor = Number(novoPeso.replace(',', '.'));
-                if (!valor || valor <= 0) {
-                  setErro('Digita um peso válido.');
-                  return;
-                }
-                mutacaoPeso.mutate(valor);
+                setNovoPeso(String(pet.pesoKg ?? ''));
+                setEditandoPeso(true);
               }}
             >
-              <Check color={colors.green} size={20} />
+              <Text style={styles.linhaValor}>{pet.pesoKg ? `${pet.pesoKg} kg` : 'Adicionar'}</Text>
             </Pressable>
-          </View>
-        ) : (
-          <Pressable
-            onPress={() => {
-              setNovoPeso(String(pet.pesoKg ?? ''));
-              setEditandoPeso(true);
-            }}
-          >
-            <Text style={styles.linhaValor}>{pet.pesoKg ? `${pet.pesoKg} kg` : 'Adicionar'}</Text>
-          </Pressable>
-        )}
+          )}
+        </View>
       </View>
 
       {erro ? <Text style={styles.erro}>{erro}</Text> : null}
 
-      <Pressable style={styles.botaoEventos} onPress={() => router.push(`/eventos/${idPet}`)}>
+      <Pressable
+        style={({ pressed }) => [styles.botaoEventos, pressed && styles.botaoPressionado]}
+        onPress={() => router.push(`/eventos/${idPet}`)}
+      >
         <Calendar color={colors.white} size={18} />
         <Text style={styles.botaoEventosTexto}>Ver eventos clínicos</Text>
       </Pressable>
@@ -140,29 +157,45 @@ export default function DetalhePet() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.offWhite },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.offWhite },
-  voltar: { marginBottom: 12 },
+  voltar: { marginBottom: 8 },
+  topo: { alignItems: 'center', marginBottom: 24 },
   avatarGrande: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     backgroundColor: colors.cardBg,
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
-  nome: { fontSize: 20, fontWeight: '600', color: colors.text, textAlign: 'center' },
-  especie: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginBottom: 24 },
+  nome: { fontSize: 21, fontWeight: '700', color: colors.text, textAlign: 'center' },
+  especie: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginTop: 2 },
   cartao: {
     backgroundColor: colors.white,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     borderWidth: 1,
     borderColor: colors.cardBg,
+    shadowColor: colors.darkGreen,
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
-  linhaLabel: { fontSize: 12, color: colors.textSecondary, marginBottom: 4 },
-  linhaValor: { fontSize: 15, color: colors.text, fontWeight: '500' },
+  linhaIcone: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.cardBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  linhaLabel: { fontSize: 12, color: colors.textSecondary, marginBottom: 2 },
+  linhaValor: { fontSize: 15, color: colors.text, fontWeight: '600' },
   inputPeso: {
     flex: 1,
     borderBottomWidth: 1,
@@ -171,17 +204,23 @@ const styles = StyleSheet.create({
     color: colors.text,
     paddingVertical: 2,
   },
-  erro: { color: colors.danger, fontSize: 13, marginBottom: 12 },
+  erro: { color: colors.danger, fontSize: 13, marginBottom: 12, marginTop: 4 },
   botaoEventos: {
     flexDirection: 'row',
     gap: 8,
     backgroundColor: colors.green,
     borderRadius: 14,
-    paddingVertical: 14,
+    paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 12,
+    shadowColor: colors.green,
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
+  botaoPressionado: { opacity: 0.85 },
   botaoEventosTexto: { color: colors.white, fontSize: 14, fontWeight: '600' },
   botaoExcluir: {
     flexDirection: 'row',
@@ -190,7 +229,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
+    marginTop: 14,
   },
   botaoExcluirTexto: { color: colors.danger, fontSize: 14, fontWeight: '500' },
 });

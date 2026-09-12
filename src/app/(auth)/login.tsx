@@ -1,6 +1,18 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  ActivityIndicator,
+  StyleSheet,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
 import { router } from 'expo-router';
+import { Mail, Lock } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { colors } from '@/theme/colors';
 
@@ -26,82 +38,103 @@ export default function Login() {
         await entrarComoDoutor(email, senha);
       }
       router.replace('/(app)');
-    } catch {
-      setErro('Email ou senha inválidos.');
+    } catch (erroRequisicao: any) {
+      if (erroRequisicao?.response?.status === 401) {
+        setErro('Email ou senha inválidos.');
+      } else {
+        setErro('Não deu pra falar com o servidor. Se for a primeira tentativa, espera uns 30s e tenta de novo.');
+      }
     } finally {
       setCarregando(false);
     }
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.titulo}>CLYVO Elo</Text>
-      <Text style={styles.subtitulo}>Entrar</Text>
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <Image source={require('../../../assets/images/clyvo-logo.png')} style={styles.logo} resizeMode="contain" />
+        <Text style={styles.subtitulo}>Continuidade de cuidado, do consultório para casa</Text>
 
-      <View style={styles.seletor}>
+        <View style={styles.seletor}>
+          <Pressable
+            style={[styles.opcao, papel === 'Tutor' && styles.opcaoAtiva]}
+            onPress={() => setPapel('Tutor')}
+          >
+            <Text style={[styles.opcaoTexto, papel === 'Tutor' && styles.opcaoTextoAtivo]}>Tutor</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.opcao, papel === 'Doutor' && styles.opcaoAtiva]}
+            onPress={() => setPapel('Doutor')}
+          >
+            <Text style={[styles.opcaoTexto, papel === 'Doutor' && styles.opcaoTextoAtivo]}>Doutor</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.campo}>
+          <Mail color={colors.textSecondary} size={18} />
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor={colors.textSecondary}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+          />
+        </View>
+        <View style={styles.campo}>
+          <Lock color={colors.textSecondary} size={18} />
+          <TextInput
+            style={styles.input}
+            placeholder="Senha"
+            placeholderTextColor={colors.textSecondary}
+            secureTextEntry
+            value={senha}
+            onChangeText={setSenha}
+          />
+        </View>
+
+        {erro ? <Text style={styles.erro}>{erro}</Text> : null}
+
         <Pressable
-          style={[styles.opcao, papel === 'Tutor' && styles.opcaoAtiva]}
-          onPress={() => setPapel('Tutor')}
+          style={({ pressed }) => [styles.botao, pressed && styles.botaoPressionado]}
+          onPress={entrar}
+          disabled={carregando}
         >
-          <Text style={[styles.opcaoTexto, papel === 'Tutor' && styles.opcaoTextoAtivo]}>Tutor</Text>
+          {carregando ? <ActivityIndicator color={colors.white} /> : <Text style={styles.botaoTexto}>Entrar</Text>}
         </Pressable>
-        <Pressable
-          style={[styles.opcao, papel === 'Doutor' && styles.opcaoAtiva]}
-          onPress={() => setPapel('Doutor')}
-        >
-          <Text style={[styles.opcaoTexto, papel === 'Doutor' && styles.opcaoTextoAtivo]}>Doutor</Text>
+
+        <Pressable onPress={() => router.push('/(auth)/cadastro')} hitSlop={8}>
+          <Text style={styles.link}>Não tem conta? Cadastre-se</Text>
         </Pressable>
-      </View>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor={colors.textSecondary}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Senha"
-        placeholderTextColor={colors.textSecondary}
-        secureTextEntry
-        value={senha}
-        onChangeText={setSenha}
-      />
-
-      {erro ? <Text style={styles.erro}>{erro}</Text> : null}
-
-      <Pressable style={styles.botao} onPress={entrar} disabled={carregando}>
-        {carregando ? <ActivityIndicator color={colors.white} /> : <Text style={styles.botaoTexto}>Entrar</Text>}
-      </Pressable>
-
-      <Pressable onPress={() => router.push('/(auth)/cadastro')}>
-        <Text style={styles.link}>Não tem conta? Cadastre-se</Text>
-      </Pressable>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1, backgroundColor: colors.offWhite },
   container: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: colors.offWhite,
     padding: 24,
     justifyContent: 'center',
   },
-  titulo: {
-    fontSize: 26,
-    fontWeight: '600',
-    color: colors.darkGreen,
-    textAlign: 'center',
+  logo: {
+    width: 220,
+    height: 210,
+    alignSelf: 'center',
   },
   subtitulo: {
-    fontSize: 15,
+    fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',
+    marginTop: 4,
     marginBottom: 32,
+    paddingHorizontal: 24,
   },
   seletor: {
     flexDirection: 'row',
@@ -118,6 +151,11 @@ const styles = StyleSheet.create({
   },
   opcaoAtiva: {
     backgroundColor: colors.green,
+    shadowColor: colors.darkGreen,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   opcaoTexto: {
     fontSize: 14,
@@ -127,16 +165,27 @@ const styles = StyleSheet.create({
   opcaoTextoAtivo: {
     color: colors.white,
   },
-  input: {
+  campo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     backgroundColor: colors.white,
     borderRadius: 14,
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: colors.text,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: colors.cardBg,
+    shadowColor: colors.darkGreen,
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: colors.text,
   },
   erro: {
     color: colors.danger,
@@ -149,6 +198,14 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: 'center',
     marginTop: 8,
+    shadowColor: colors.green,
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  botaoPressionado: {
+    opacity: 0.85,
   },
   botaoTexto: {
     color: colors.white,
