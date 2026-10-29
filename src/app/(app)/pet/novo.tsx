@@ -1,159 +1,54 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { KeyboardAvoidingView, Platform } from 'react-native';
 import { router } from 'expo-router';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, PawPrint, Tag } from 'lucide-react-native';
-import { criarPet } from '@/api/pets';
-import { useAuth } from '@/contexts/AuthContext';
-import { colors } from '@/theme/colors';
+import { PawPrint, Scale, Tag } from 'lucide-react-native';
+import { Botao } from '@/components/Botao';
+import { Cabecalho } from '@/components/Cabecalho';
+import { CampoTexto } from '@/components/CampoTexto';
+import { MensagemDeErro } from '@/components/MensagemDeErro';
+import { Seletor } from '@/components/Seletor';
+import { Tela } from '@/components/Tela';
+import { useTema } from '@/contexts/TemaContext';
+import { extrairMensagemDeErro } from '@/domain/erros';
+import { ESPECIES, validarNovoPet } from '@/domain/pets';
+import { useCriarPet } from '@/hooks/usePets';
+import { Especie } from '@/types';
 
 export default function NovoPet() {
-  const { id: idTutor } = useAuth();
-  const queryClient = useQueryClient();
+  const { cores } = useTema();
+  const criarPet = useCriarPet();
   const [nome, setNome] = useState('');
-  const [especie, setEspecie] = useState<'CACHORRO' | 'GATO'>('CACHORRO');
+  const [especie, setEspecie] = useState<Especie>('CACHORRO');
   const [raca, setRaca] = useState('');
+  const [peso, setPeso] = useState('');
   const [erro, setErro] = useState('');
 
-  const mutacao = useMutation({
-    mutationFn: criarPet,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pets'] });
-      router.back();
-    },
-    onError: () => setErro('Não deu pra cadastrar o pet agora.'),
-  });
-
   function salvar() {
-    if (!nome.trim()) {
-      setErro('Digita o nome do pet.');
-      return;
-    }
-    if (!idTutor) {
-      setErro('Sessão inválida, faz login de novo.');
+    const validacao = validarNovoPet(nome, especie, raca, peso);
+    if (!validacao.ok) {
+      setErro(validacao.erro);
       return;
     }
     setErro('');
-    mutacao.mutate({ idTutor, nome, especie, raca: raca || undefined });
+    criarPet.mutate(validacao.valor, {
+      onSuccess: (pet) => router.replace(`/pet/${pet.idPet}`),
+      onError: (erroDaRequisicao) => setErro(extrairMensagemDeErro(erroDaRequisicao, 'Não foi possível cadastrar o pet agora.')),
+    });
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.titulo}>Novo pet</Text>
-          <Text style={styles.subtitulo}>Cadastra em segundos</Text>
-        </View>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.fechar}>
-          <X color={colors.textSecondary} size={20} />
-        </Pressable>
-      </View>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: cores.fundo }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Tela rolavel>
+        <Cabecalho titulo="Novo pet" subtitulo="Os dados aparecem para a equipe da clínica" voltar="fechar" />
 
-      <View style={styles.campo}>
-        <PawPrint color={colors.textSecondary} size={18} />
-        <TextInput
-          style={styles.input}
-          placeholder="Nome"
-          placeholderTextColor={colors.textSecondary}
-          value={nome}
-          onChangeText={setNome}
-        />
-      </View>
+        <CampoTexto icone={PawPrint} rotulo="Nome" placeholder="Ex.: Toby" value={nome} onChangeText={setNome} maxLength={100} />
+        <Seletor rotulo="Espécie" opcoes={ESPECIES} valor={especie} aoMudar={setEspecie} />
+        <CampoTexto icone={Tag} rotulo="Raça" placeholder="Opcional" value={raca} onChangeText={setRaca} maxLength={100} />
+        <CampoTexto icone={Scale} rotulo="Peso (kg)" placeholder="Opcional, ex.: 12,5" keyboardType="decimal-pad" value={peso} onChangeText={setPeso} />
 
-      <View style={styles.seletor}>
-        <Pressable
-          style={[styles.opcao, especie === 'CACHORRO' && styles.opcaoAtiva]}
-          onPress={() => setEspecie('CACHORRO')}
-        >
-          <Text style={[styles.opcaoTexto, especie === 'CACHORRO' && styles.opcaoTextoAtivo]}>Cachorro</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.opcao, especie === 'GATO' && styles.opcaoAtiva]}
-          onPress={() => setEspecie('GATO')}
-        >
-          <Text style={[styles.opcaoTexto, especie === 'GATO' && styles.opcaoTextoAtivo]}>Gato</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.campo}>
-        <Tag color={colors.textSecondary} size={18} />
-        <TextInput
-          style={styles.input}
-          placeholder="Raça (opcional)"
-          placeholderTextColor={colors.textSecondary}
-          value={raca}
-          onChangeText={setRaca}
-        />
-      </View>
-
-      {erro ? <Text style={styles.erro}>{erro}</Text> : null}
-
-      <Pressable
-        style={({ pressed }) => [styles.botao, pressed && styles.botaoPressionado]}
-        onPress={salvar}
-        disabled={mutacao.isPending}
-      >
-        {mutacao.isPending ? <ActivityIndicator color={colors.white} /> : <Text style={styles.botaoTexto}>Salvar</Text>}
-      </Pressable>
-    </View>
+        <MensagemDeErro texto={erro} />
+        <Botao titulo="Salvar" aoPressionar={salvar} carregando={criarPet.isPending} />
+      </Tela>
+    </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.offWhite, padding: 20, paddingTop: 40 },
-  header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 },
-  titulo: { fontSize: 19, fontWeight: '700', color: colors.text },
-  subtitulo: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
-  fechar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.cardBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  campo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.white,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.cardBg,
-    shadowColor: colors.darkGreen,
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
-  },
-  input: { flex: 1, paddingVertical: 14, fontSize: 15, color: colors.text },
-  seletor: { flexDirection: 'row', backgroundColor: colors.cardBg, borderRadius: 14, padding: 4, marginBottom: 12 },
-  opcao: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
-  opcaoAtiva: {
-    backgroundColor: colors.green,
-    shadowColor: colors.darkGreen,
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  opcaoTexto: { fontSize: 14, color: colors.textSecondary, fontWeight: '500' },
-  opcaoTextoAtivo: { color: colors.white },
-  erro: { color: colors.danger, fontSize: 13, marginBottom: 12 },
-  botao: {
-    backgroundColor: colors.green,
-    borderRadius: 14,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: 8,
-    shadowColor: colors.green,
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  botaoPressionado: { opacity: 0.85 },
-  botaoTexto: { color: colors.white, fontSize: 15, fontWeight: '600' },
-});

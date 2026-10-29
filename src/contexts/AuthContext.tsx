@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { storage } from '@/lib/storage';
-import { loginTutor, loginDoutor, cadastrarTutor } from '@/api/auth';
-import { Papel, CadastroTutorRequest } from '@/types';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { lerSessaoSalva, limparSessaoSalva, salvarSessao, SessaoSalva } from '@/lib/sessao';
+import { cadastrarTutor, entrar as entrarNaApi } from '@/services/authService';
+import { definirToken } from '@/services/http';
+import { CadastroTutorRequest, LoginResponse, Papel } from '@/types';
 
 interface AuthState {
   token: string | null;
@@ -9,8 +11,8 @@ interface AuthState {
   nome: string | null;
   id: number | null;
   carregando: boolean;
-  entrarComoTutor: (email: string, senha: string) => Promise<void>;
-  entrarComoDoutor: (email: string, senha: string) => Promise<void>;
+  ehDoutor: boolean;
+  entrar: (papel: Papel, email: string, senha: string) => Promise<void>;
   cadastrarComoTutor: (dados: CadastroTutorRequest) => Promise<void>;
   sair: () => Promise<void>;
 }
@@ -18,79 +20,53 @@ interface AuthState {
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setToken] = useState<string | null>(null);
-  const [papel, setPapel] = useState<Papel | null>(null);
-  const [nome, setNome] = useState<string | null>(null);
-  const [id, setId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+  const [sessao, setSessao] = useState<SessaoSalva | null>(null);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
-    async function carregarSessao() {
-      const tokenSalvo = await storage.getItem('token');
-      const papelSalvo = await storage.getItem('papel');
-      const nomeSalvo = await storage.getItem('nome');
-      const idSalvo = await storage.getItem('id');
-      if (tokenSalvo && papelSalvo) {
-        setToken(tokenSalvo);
-        setPapel(papelSalvo as Papel);
-        setNome(nomeSalvo);
-        setId(idSalvo ? Number(idSalvo) : null);
-      }
+    lerSessaoSalva().then((salva) => {
+      definirToken(salva?.token ?? null);
+      setSessao(salva);
       setCarregando(false);
-    }
-    carregarSessao();
+    });
   }, []);
 
-  async function salvarSessao(resultado: { token: string; papel: Papel; nome: string; id: number }) {
-    await storage.setItem('token', resultado.token);
-    await storage.setItem('papel', resultado.papel);
-    await storage.setItem('nome', resultado.nome);
-    await storage.setItem('id', String(resultado.id));
-    setToken(resultado.token);
-    setPapel(resultado.papel);
-    setNome(resultado.nome);
-    setId(resultado.id);
-  }
+  const iniciarSessao = useCallback(async (resposta: LoginResponse) => {
+    const nova: SessaoSalva = { token: resposta.token, papel: resposta.papel, nome: resposta.nome, id: resposta.id };
+    definirToken(nova.token);
+    await salvarSessao(nova);
+    queryClient.clear();
+    setSessao(nova);
+  }, [queryClient]);
 
-  async function entrarComoTutor(email: string, senha: string) {
-    const resultado = await loginTutor(email, senha);
-    await salvarSessao(resultado);
-  }
-
-  async function entrarComoDoutor(email: string, senha: string) {
-    const resultado = await loginDoutor(email, senha);
-    await salvarSessao(resultado);
-  }
-
-  async function cadastrarComoTutor(dados: CadastroTutorRequest) {
-    const resultado = await cadastrarTutor(dados);
-    await salvarSessao(resultado);
-  }
-
-  async function sair() {
-    await storage.deleteItem('token');
-    await storage.deleteItem('papel');
-    await storage.deleteItem('nome');
-    await storage.deleteItem('id');
-    setToken(null);
-    setPapel(null);
-    setNome(null);
-    setId(null);
-  }
-
-  return (
-    <AuthContext.Provider
-      value={{ token, papel, nome, id, carregando, entrarComoTutor, entrarComoDoutor, cadastrarComoTutor, sair }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const valor = useMemo<AuthState>(
+    () => ({
+      token: sessao?.token ?? null,
+      papel: sessao?.papel ?? null,
+      nome: sessao?.nome ?? null,
+      id: sessao?.id ?? null,
+      carregando,
+      ehDoutor: sessao?.papel === 'Doutor',
+      entrar: async (papel, email, senha) => iniciarSessao(await entrarNaApi(papel, email, senha)),
+      cadastrarComoTutor: async (dados) => iniciarSessao(await cadastrarTutor(dados)),
+      sair: async () => {
+        definirToken(null);
+        await limparSessaoSalva();
+        queryClient.clear();
+        setSessao(null);
+      },
+    }),
+    [sessao, carregando, iniciarSessao, queryClient]
   );
+
+  return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
+  const contexto = useContext(AuthContext);
+  if (!contexto) {
     throw new Error('useAuth precisa estar dentro de um AuthProvider');
   }
-  return context;
+  return contexto;
 }

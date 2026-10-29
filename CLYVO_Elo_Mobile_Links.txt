@@ -1,5 +1,5 @@
 CLYVO Elo — Challenge FIAP 2026 (CLYVO VET)
-2º Semestre — Sprint 3
+2º Semestre — Sprint 4
 Disciplina: Mobile Application Development
 
 Integrantes:
@@ -7,8 +7,13 @@ Gabriel Cabral Mendes Mariano - RM563230 - Turma 2TDSPO
 João Victor Santana dos Santos - RM566063 - Turma 2TDSPX
 
 Link do GitHub (Mobile): https://github.com/GabrielCabralmm/clyvo-elo-mobile
-Link do Vídeo (Mobile): https://youtu.be/9m1Xo1TpRSo
+Link do Vídeo (Mobile): [a preencher]
+Publicação: Firebase App Distribution (e-mail institucional do professor cadastrado como tester)
 
-API consumida pelo app (disciplina de Advanced Business Development com .NET):
+API consumida pelo app (disciplina de Advanced Business Development with .NET):
 Link do Deploy: https://clyvoelo-dotnet.onrender.com/swagger/index.html
 Link do GitHub: https://github.com/GabrielCabralmm/ClyvoElo-dotnet
+
+Acessos de demonstração (senha clyvo123):
+Tutor: gabriel@email.com
+Doutor: ana.ferreira@clyvovet.com

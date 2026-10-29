@@ -2,7 +2,7 @@
   "expo": {
     "name": "CLYVO Elo",
     "slug": "clyvo-elo-mobile",
-    "version": "1.0.0",
+    "version": "1.4.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "clyvoelomobile",
@@ -15,7 +15,12 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "br.com.fiap.clyvoelo",
+      "versionCode": 4,
+      "permissions": [
+        "POST_NOTIFICATIONS"
+      ]
     },
     "web": {
       "output": "static",
@@ -31,12 +36,22 @@
           "imageWidth": 180
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "color": "#3F8F68",
+          "defaultChannel": "cuidados"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "ios": {
+      "bundleIdentifier": "br.com.fiap.clyvoelo",
+      "supportsTablet": true
     }
   }
 }
-
