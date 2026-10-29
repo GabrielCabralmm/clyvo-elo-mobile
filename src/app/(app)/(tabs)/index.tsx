@@ -1,215 +1,102 @@
-import { View, Text, FlatList, Pressable, ActivityIndicator, StyleSheet, RefreshControl } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { FlatList, RefreshControl, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Bell, PawPrint, Cat, ChevronRight, Plus, HeartHandshake } from 'lucide-react-native';
-import { listarPets, listarMeusPets } from '@/api/pets';
+import { ChevronRight, HeartHandshake, Search } from 'lucide-react-native';
+import { BotaoFlutuante } from '@/components/BotaoFlutuante';
+import { CampoTexto } from '@/components/CampoTexto';
+import { Carregando } from '@/components/Carregando';
+import { Cartao } from '@/components/Cartao';
+import { EstadoVazio } from '@/components/EstadoVazio';
+import { IconeDoPet } from '@/components/IconeDoPet';
+import { MensagemDeErro } from '@/components/MensagemDeErro';
+import { Tela } from '@/components/Tela';
 import { useAuth } from '@/contexts/AuthContext';
-import { colors } from '@/theme/colors';
+import { useTema } from '@/contexts/TemaContext';
+import { extrairMensagemDeErro } from '@/domain/erros';
+import { formatarPeso, idadeDoPet, rotuloDaEspecie } from '@/domain/pets';
+import { useEstilos } from '@/hooks/useEstilos';
+import { usePets } from '@/hooks/usePets';
+import { useValorAtrasado } from '@/hooks/useValorAtrasado';
+import { Paleta } from '@/theme/paletas';
 import { Pet } from '@/types';
 
-function iconeDoPet(especie: string) {
-  return especie?.toUpperCase() === 'GATO' ? Cat : PawPrint;
-}
+export default function Inicio() {
+  const { nome, ehDoutor } = useAuth();
+  const { cores } = useTema();
+  const estilos = useEstilos(criarEstilos);
+  const [busca, setBusca] = useState('');
+  const buscaAplicada = useValorAtrasado(busca);
+  const { pets, total, isLoading, isError, error, refetch, isRefetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    usePets(buscaAplicada);
 
-export default function Home() {
-  const { nome, papel } = useAuth();
-  const ehDoutor = papel === 'Doutor';
-
-  const { data: pets, isLoading, isError, refetch, isRefetching } = useQuery({
-    queryKey: ['pets', papel],
-    queryFn: ehDoutor ? listarPets : listarMeusPets,
-  });
+  function descricaoDoPet(pet: Pet) {
+    return [pet.raca ?? rotuloDaEspecie(pet.especie), idadeDoPet(pet.dataNascimento), formatarPeso(pet.pesoKg)]
+      .filter(Boolean)
+      .join(' · ');
+  }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.saudacaoLabel}>Olá,</Text>
-          <Text style={styles.saudacaoNome}>{nome}</Text>
-        </View>
-        <View style={styles.iconeCirculo}>
-          <Bell color={colors.green} size={18} />
-        </View>
+    <Tela>
+      <View style={estilos.cabecalho}>
+        <Text style={estilos.saudacao}>Olá,</Text>
+        <Text style={estilos.nome}>{nome}</Text>
       </View>
 
-      <Text style={styles.secaoTitulo}>{ehDoutor ? 'Pacientes' : 'Meus pets'}</Text>
+      <CampoTexto icone={Search} placeholder={ehDoutor ? 'Buscar paciente pelo nome' : 'Buscar entre meus pets'} value={busca} onChangeText={setBusca} />
 
-      {isLoading && <ActivityIndicator color={colors.green} style={{ marginTop: 20 }} />}
-      {isError && <Text style={styles.erro}>Não deu pra carregar os pets agora.</Text>}
+      <Text style={estilos.secao}>
+        {ehDoutor ? 'Pacientes' : 'Meus pets'}
+        {total > 0 ? <Text style={estilos.contador}>  {total}</Text> : null}
+      </Text>
+
+      {isLoading && <Carregando />}
+      {isError && <MensagemDeErro texto={extrairMensagemDeErro(error, 'Não foi possível carregar os pets agora.')} />}
 
       <FlatList
         data={pets}
-        keyExtractor={(item) => String(item.idPet)}
-        contentContainerStyle={{ paddingBottom: 24, flexGrow: 1 }}
-        refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.green} />
-        }
+        keyExtractor={(pet) => String(pet.idPet)}
+        contentContainerStyle={estilos.lista}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={cores.primaria} />}
+        onEndReached={() => hasNextPage && !isFetchingNextPage && fetchNextPage()}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={isFetchingNextPage ? <Carregando /> : null}
         ListEmptyComponent={
-          !isLoading ? (
-            <View style={styles.vazioContainer}>
-              <View style={styles.vazioIcone}>
-                <HeartHandshake color={colors.lightGreen} size={30} />
-              </View>
-              <Text style={styles.vazioTitulo}>{ehDoutor ? 'Nenhum paciente ainda' : 'Nenhum pet por aqui'}</Text>
-              <Text style={styles.vazioTexto}>
-                {ehDoutor ? 'Os pets cadastrados pelos tutores vão aparecer aqui.' : 'Toca no + para cadastrar o primeiro.'}
-              </Text>
-            </View>
+          !isLoading && !isError ? (
+            <EstadoVazio
+              icone={HeartHandshake}
+              titulo={buscaAplicada ? 'Nenhum pet encontrado' : ehDoutor ? 'Nenhum paciente ainda' : 'Nenhum pet por aqui'}
+              texto={buscaAplicada ? 'Tente outro nome.' : ehDoutor ? 'Os pets cadastrados pelos tutores aparecem aqui.' : 'Toque no + para cadastrar o primeiro.'}
+            />
           ) : null
         }
-        renderItem={({ item }: { item: Pet }) => {
-          const IconePet = iconeDoPet(item.especie);
-          return (
-            <Pressable
-              style={({ pressed }) => [styles.cartao, pressed && styles.cartaoPressionado]}
-              onPress={() => router.push(`/pet/${item.idPet}`)}
-            >
-              <View style={styles.avatar}>
-                <IconePet color={colors.green} size={22} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.petNome}>{item.nome}</Text>
-                <Text style={styles.petDetalhe}>
-                  {item.raca ?? item.especie}
-                  {item.pesoKg ? ` · ${item.pesoKg} kg` : ''}
-                </Text>
-              </View>
-              <ChevronRight color={colors.lightGreen} size={18} />
-            </Pressable>
-          );
-        }}
+        renderItem={({ item }) => (
+          <Cartao aoPressionar={() => router.push(`/pet/${item.idPet}`)} estilo={estilos.cartao}>
+            <IconeDoPet especie={item.especie} />
+            <View style={estilos.textos}>
+              <Text style={estilos.petNome}>{item.nome}</Text>
+              <Text style={estilos.petDetalhe}>{descricaoDoPet(item)}</Text>
+              {ehDoutor && item.nomeTutor ? <Text style={estilos.petTutor}>Tutor: {item.nomeTutor}</Text> : null}
+            </View>
+            <ChevronRight color={cores.destaque} size={18} />
+          </Cartao>
+        )}
       />
 
-      {!ehDoutor && (
-        <Pressable
-          style={({ pressed }) => [styles.botaoNovo, pressed && styles.botaoNovoPressionado]}
-          onPress={() => router.push('/pet/novo')}
-        >
-          <Plus color={colors.white} size={22} />
-        </Pressable>
-      )}
-    </View>
+      {!ehDoutor && <BotaoFlutuante rotulo="Cadastrar pet" aoPressionar={() => router.push('/pet/novo')} />}
+    </Tela>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.offWhite,
-    padding: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  saudacaoLabel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  saudacaoNome: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  iconeCirculo: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.cardBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secaoTitulo: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 12,
-  },
-  erro: {
-    color: colors.danger,
-    fontSize: 13,
-  },
-  cartao: {
-    backgroundColor: colors.white,
-    borderRadius: 18,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.cardBg,
-    shadowColor: colors.darkGreen,
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
-  },
-  cartaoPressionado: {
-    opacity: 0.8,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.cardBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  petNome: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  petDetalhe: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  vazioContainer: {
-    alignItems: 'center',
-    paddingTop: 60,
-    paddingHorizontal: 32,
-  },
-  vazioIcone: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.cardBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  vazioTitulo: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 6,
-  },
-  vazioTexto: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  botaoNovo: {
-    position: 'absolute',
-    right: 20,
-    bottom: 24,
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: colors.green,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.green,
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  botaoNovoPressionado: {
-    opacity: 0.85,
-  },
+const criarEstilos = (cores: Paleta) => ({
+  cabecalho: { marginBottom: 16 },
+  saudacao: { fontSize: 13, color: cores.textoSecundario },
+  nome: { fontSize: 22, fontWeight: '700' as const, color: cores.texto },
+  secao: { fontSize: 15, fontWeight: '600' as const, color: cores.texto, marginBottom: 12, marginTop: 4 },
+  contador: { color: cores.textoSecundario, fontWeight: '400' as const },
+  lista: { paddingBottom: 96, flexGrow: 1 },
+  cartao: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 12 },
+  textos: { flex: 1 },
+  petNome: { fontSize: 15, fontWeight: '600' as const, color: cores.texto },
+  petDetalhe: { fontSize: 13, color: cores.textoSecundario, marginTop: 2 },
+  petTutor: { fontSize: 12, color: cores.primaria, marginTop: 2 },
 });

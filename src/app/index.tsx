@@ -1,18 +1,13 @@
 import { Redirect } from 'expo-router';
-import { View, ActivityIndicator } from 'react-native';
+import { Carregando } from '@/components/Carregando';
 import { useAuth } from '@/contexts/AuthContext';
-import { colors } from '@/theme/colors';
 
 export default function Index() {
   const { token, carregando } = useAuth();
 
   if (carregando) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.offWhite }}>
-        <ActivityIndicator color={colors.green} />
-      </View>
-    );
+    return <Carregando telaCheia />;
   }
 
-  return <Redirect href={token ? '/(app)' : '/(auth)/login'} />;
+  return <Redirect href={token ? '/(app)/(tabs)' : '/(auth)/login'} />;
 }

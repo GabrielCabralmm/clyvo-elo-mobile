@@ -1,5 +1,7 @@
 import { Stack } from 'expo-router';
+import { useTema } from '@/contexts/TemaContext';
 
 export default function AuthLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  const { cores } = useTema();
+  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: cores.fundo } }} />;
 }

@@ -1,23 +1,21 @@
 import { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  ActivityIndicator,
-  StyleSheet,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, Pressable, Text } from 'react-native';
 import { router } from 'expo-router';
-import { ChevronLeft, User, Mail, Lock, Phone } from 'lucide-react-native';
+import { Lock, Mail, Phone, User } from 'lucide-react-native';
+import { Botao } from '@/components/Botao';
+import { Cabecalho } from '@/components/Cabecalho';
+import { CampoTexto } from '@/components/CampoTexto';
+import { MensagemDeErro } from '@/components/MensagemDeErro';
+import { Tela } from '@/components/Tela';
 import { useAuth } from '@/contexts/AuthContext';
-import { colors } from '@/theme/colors';
+import { validarCadastro } from '@/domain/autenticacao';
+import { extrairMensagemDeErro } from '@/domain/erros';
+import { useEstilos } from '@/hooks/useEstilos';
+import { Paleta } from '@/theme/paletas';
 
 export default function Cadastro() {
   const { cadastrarComoTutor } = useAuth();
+  const estilos = useEstilos(criarEstilos);
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -26,142 +24,56 @@ export default function Cadastro() {
   const [erro, setErro] = useState('');
 
   async function cadastrar() {
-    if (!nome.trim() || !email.trim() || !senha) {
-      setErro('Preenche nome, email e senha.');
-      return;
-    }
-    if (senha.length < 6) {
-      setErro('A senha precisa ter pelo menos 6 caracteres.');
+    const validacao = validarCadastro(nome, email, senha, telefone);
+    if (!validacao.ok) {
+      setErro(validacao.erro);
       return;
     }
     setErro('');
     setCarregando(true);
     try {
-      await cadastrarComoTutor({ nome, email, senha, telefone: telefone || undefined });
-      router.replace('/(app)');
-    } catch (erroRequisicao: any) {
-      if (erroRequisicao?.response?.status === 409) {
-        setErro('Já existe uma conta com esse email.');
-      } else {
-        setErro('Não deu pra cadastrar agora. Tenta de novo em instantes.');
-      }
+      await cadastrarComoTutor(validacao.valor);
+      router.replace('/');
+    } catch (erroDaRequisicao) {
+      setErro(extrairMensagemDeErro(erroDaRequisicao, 'Não foi possível criar a conta agora.'));
     } finally {
       setCarregando(false);
     }
   }
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Pressable onPress={() => router.back()} style={styles.voltar} hitSlop={8}>
-          <ChevronLeft color={colors.text} size={22} />
-        </Pressable>
+    <KeyboardAvoidingView style={estilos.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Tela rolavel estiloConteudo={estilos.conteudo}>
+        <Cabecalho titulo="Criar conta de tutor" subtitulo="Leva menos de um minuto" voltar="seta" />
+        <Image source={require('../../../assets/images/clyvo-mark.png')} style={estilos.marca} resizeMode="contain" />
 
-        <Image source={require('../../../assets/images/clyvo-mark.png')} style={styles.marca} resizeMode="contain" />
-        <Text style={styles.titulo}>Criar conta de Tutor</Text>
-        <Text style={styles.subtitulo}>Leva menos de um minuto</Text>
+        <CampoTexto icone={User} placeholder="Nome completo" value={nome} onChangeText={setNome} />
+        <CampoTexto
+          icone={Mail}
+          placeholder="Email"
+          autoCapitalize="none"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+        />
+        <CampoTexto icone={Lock} placeholder="Senha (mínimo 6 caracteres)" secureTextEntry value={senha} onChangeText={setSenha} />
+        <CampoTexto icone={Phone} placeholder="Telefone (opcional)" keyboardType="phone-pad" value={telefone} onChangeText={setTelefone} />
 
-        <View style={styles.campo}>
-          <User color={colors.textSecondary} size={18} />
-          <TextInput
-            style={styles.input}
-            placeholder="Nome completo"
-            placeholderTextColor={colors.textSecondary}
-            value={nome}
-            onChangeText={setNome}
-          />
-        </View>
-        <View style={styles.campo}>
-          <Mail color={colors.textSecondary} size={18} />
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor={colors.textSecondary}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-          />
-        </View>
-        <View style={styles.campo}>
-          <Lock color={colors.textSecondary} size={18} />
-          <TextInput
-            style={styles.input}
-            placeholder="Senha (mínimo 6 caracteres)"
-            placeholderTextColor={colors.textSecondary}
-            secureTextEntry
-            value={senha}
-            onChangeText={setSenha}
-          />
-        </View>
-        <View style={styles.campo}>
-          <Phone color={colors.textSecondary} size={18} />
-          <TextInput
-            style={styles.input}
-            placeholder="Telefone (opcional)"
-            placeholderTextColor={colors.textSecondary}
-            keyboardType="phone-pad"
-            value={telefone}
-            onChangeText={setTelefone}
-          />
-        </View>
+        <MensagemDeErro texto={erro} />
 
-        {erro ? <Text style={styles.erro}>{erro}</Text> : null}
-
-        <Pressable
-          style={({ pressed }) => [styles.botao, pressed && styles.botaoPressionado]}
-          onPress={cadastrar}
-          disabled={carregando}
-        >
-          {carregando ? <ActivityIndicator color={colors.white} /> : <Text style={styles.botaoTexto}>Criar conta</Text>}
-        </Pressable>
+        <Botao titulo="Criar conta" aoPressionar={cadastrar} carregando={carregando} />
 
         <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Text style={styles.link}>Já tem conta? Entrar</Text>
+          <Text style={estilos.link}>Já tem conta? Entrar</Text>
         </Pressable>
-      </ScrollView>
+      </Tela>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.offWhite },
-  container: { flexGrow: 1, backgroundColor: colors.offWhite, padding: 24, paddingTop: 20 },
-  voltar: { marginBottom: 8 },
-  marca: { width: 84, height: 80, alignSelf: 'center', marginBottom: 4 },
-  titulo: { fontSize: 20, fontWeight: '600', color: colors.darkGreen, textAlign: 'center' },
-  subtitulo: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginBottom: 28 },
-  campo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.white,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.cardBg,
-    shadowColor: colors.darkGreen,
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
-  },
-  input: { flex: 1, paddingVertical: 14, fontSize: 15, color: colors.text },
-  erro: { color: colors.danger, fontSize: 13, marginBottom: 12 },
-  botao: {
-    backgroundColor: colors.green,
-    borderRadius: 14,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: 8,
-    shadowColor: colors.green,
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  botaoPressionado: { opacity: 0.85 },
-  botaoTexto: { color: colors.white, fontSize: 15, fontWeight: '600' },
-  link: { color: colors.green, fontSize: 13, textAlign: 'center', marginTop: 18 },
+const criarEstilos = (cores: Paleta) => ({
+  flex: { flex: 1, backgroundColor: cores.fundo },
+  conteudo: { maxWidth: 440 },
+  marca: { width: 72, height: 68, alignSelf: 'center' as const, marginBottom: 20 },
+  link: { color: cores.primaria, fontSize: 13, textAlign: 'center' as const, marginTop: 18, fontWeight: '500' as const },
 });
