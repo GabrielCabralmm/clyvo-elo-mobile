@@ -52,6 +52,16 @@
     "ios": {
       "bundleIdentifier": "br.com.fiap.clyvoelo",
       "supportsTablet": true
-    }
+    },
+    "extra": {
+      "commitHash": "60ddf82",
+      "commitData": "2026-10-29T18:09:43-03:00",
+      "canal": "local",
+      "router": {},
+      "eas": {
+        "projectId": "4ae3cb94-1d8e-46af-acc6-83d1764427b4"
+      }
+    },
+    "owner": "gabrielcmmariano"
   }
 }
